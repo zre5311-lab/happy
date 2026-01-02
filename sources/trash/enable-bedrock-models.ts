@@ -1,18 +1,13 @@
 #!/usr/bin/env npx tsx
 /**
- * Enable Claude models on AWS Bedrock
+ * Test AWS Bedrock Claude Models
  *
- * Run locally with: npx tsx sources/trash/enable-bedrock-models.ts
+ * Models are auto-enabled on first invoke (no manual setup needed).
+ * For Anthropic models, first-time users may need to submit use case details.
  *
- * Requires .env.local with:
- *   EXPO_PUBLIC_AWS_ACCESS_KEY_ID=your_key
- *   EXPO_PUBLIC_AWS_SECRET_ACCESS_KEY=your_secret
+ * Run: npx tsx sources/trash/enable-bedrock-models.ts
  */
 
-import {
-    BedrockClient,
-    ListFoundationModelsCommand,
-} from '@aws-sdk/client-bedrock';
 import {
     BedrockRuntimeClient,
     ConverseCommand,
@@ -30,7 +25,6 @@ function loadEnv() {
             if (match) {
                 const key = match[1].trim();
                 let value = match[2].trim();
-                // Remove quotes if present
                 if ((value.startsWith('"') && value.endsWith('"')) ||
                     (value.startsWith("'") && value.endsWith("'"))) {
                     value = value.slice(1, -1);
@@ -50,108 +44,57 @@ const credentials = {
 
 const region = process.env.EXPO_PUBLIC_AWS_REGION || 'us-east-1';
 
+const MODELS_TO_TEST = [
+    { id: 'anthropic.claude-opus-4-5-20251101-v1:0', name: 'Claude Opus 4.5' },
+    { id: 'anthropic.claude-sonnet-4-20250514-v1:0', name: 'Claude Sonnet 4' },
+    { id: 'anthropic.claude-3-5-sonnet-20241022-v2:0', name: 'Claude 3.5 Sonnet' },
+    { id: 'anthropic.claude-3-5-haiku-20241022-v1:0', name: 'Claude 3.5 Haiku' },
+    { id: 'anthropic.claude-3-haiku-20240307-v1:0', name: 'Claude 3 Haiku' },
+];
+
 async function main() {
-    console.log('🔧 AWS Bedrock - Claude Models Setup\n');
+    console.log('🔧 AWS Bedrock - Claude Models Test\n');
 
     if (!credentials.accessKeyId || !credentials.secretAccessKey) {
-        console.error('❌ AWS credentials not found.');
-        console.error('   Make sure .env.local exists with:');
-        console.error('   EXPO_PUBLIC_AWS_ACCESS_KEY_ID=your_key');
-        console.error('   EXPO_PUBLIC_AWS_SECRET_ACCESS_KEY=your_secret');
+        console.error('❌ AWS credentials not found in .env.local');
         process.exit(1);
     }
 
     console.log('Region:', region);
-    console.log('Access Key:', credentials.accessKeyId.slice(0, 8) + '...');
-    console.log('');
+    console.log('Access Key:', credentials.accessKeyId.slice(0, 8) + '...\n');
+    console.log('Models are auto-enabled on first invoke.\n');
 
-    const bedrockClient = new BedrockClient({ region, credentials });
-    const runtimeClient = new BedrockRuntimeClient({ region, credentials });
+    const client = new BedrockRuntimeClient({ region, credentials });
 
-    // Step 1: List available models
-    console.log('📋 Checking available Claude models...\n');
+    console.log('🧪 Testing models...\n');
 
-    try {
-        const listResponse = await bedrockClient.send(
-            new ListFoundationModelsCommand({ byProvider: 'Anthropic' })
-        );
-
-        const models = listResponse.modelSummaries || [];
-
-        if (models.length === 0) {
-            console.log('⚠️  No Claude models found. You need to enable model access.\n');
-        } else {
-            console.log(`Found ${models.length} Claude models:\n`);
-            for (const model of models) {
-                console.log(`  • ${model.modelId}`);
-                console.log(`    └─ ${model.modelName} (${model.modelLifecycle?.status || 'N/A'})`);
-            }
-        }
-    } catch (error: any) {
-        console.error('❌ Error listing models:', error.message);
-
-        if (error.name === 'AccessDeniedException') {
-            console.log('\n⚠️  Your IAM user needs Bedrock permissions.');
-            console.log('   Add AmazonBedrockFullAccess policy to your IAM user.');
-        }
-        return;
-    }
-
-    // Step 2: Test model invocation
-    console.log('\n\n🧪 Testing model invocation...\n');
-
-    const modelsToTest = [
-        { id: 'anthropic.claude-3-5-sonnet-20241022-v2:0', name: 'Claude 3.5 Sonnet' },
-        { id: 'anthropic.claude-3-haiku-20240307-v1:0', name: 'Claude 3 Haiku' },
-    ];
-
-    for (const model of modelsToTest) {
+    for (const model of MODELS_TO_TEST) {
         try {
-            const response = await runtimeClient.send(
+            const response = await client.send(
                 new ConverseCommand({
                     modelId: model.id,
-                    messages: [{ role: 'user', content: [{ text: 'Say "hello" and nothing else.' }] }],
+                    messages: [{ role: 'user', content: [{ text: 'Say "hello" only.' }] }],
                     inferenceConfig: { maxTokens: 10 },
                 })
             );
 
             const outputText = response.output?.message?.content?.[0];
             const text = outputText && 'text' in outputText ? outputText.text : '';
-            console.log(`  ✅ ${model.name}: Working! Response: "${text.trim()}"`);
+            console.log(`  ✅ ${model.name}: "${text.trim()}"`);
         } catch (error: any) {
-            if (error.name === 'AccessDeniedException') {
-                console.log(`  🔒 ${model.name}: Not enabled - needs activation in console`);
+            if (error.message?.includes('use case details')) {
+                console.log(`  📝 ${model.name}: Submit use case details at AWS console first`);
+            } else if (error.name === 'AccessDeniedException') {
+                console.log(`  🔒 ${model.name}: Need IAM bedrock:InvokeModel permission`);
             } else if (error.name === 'ValidationException') {
-                console.log(`  ❌ ${model.name}: Model not available in ${region}`);
+                console.log(`  ❌ ${model.name}: Not available in ${region}`);
             } else {
                 console.log(`  ⚠️  ${model.name}: ${error.message}`);
             }
         }
     }
 
-    console.log('\n' + '═'.repeat(60));
-    console.log('📌 ENABLE MODELS IN AWS CONSOLE:');
-    console.log('═'.repeat(60));
-    console.log(`
-1. Open: https://console.aws.amazon.com/bedrock/home?region=${region}#/modelaccess
-
-2. Click "Manage model access" (orange button)
-
-3. Check these models:
-   ☐ Claude Opus 4.5
-   ☐ Claude Sonnet 4
-   ☐ Claude 3.5 Sonnet v2
-   ☐ Claude 3.5 Haiku
-   ☐ Claude 3 Opus
-   ☐ Claude 3 Sonnet
-   ☐ Claude 3 Haiku
-
-4. Click "Save changes"
-
-5. Accept Anthropic's EULA when prompted
-
-Access is granted instantly after accepting.
-`);
+    console.log('\n✅ Done!\n');
 }
 
 main().catch(console.error);
