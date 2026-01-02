@@ -55,3 +55,12 @@ export {
     type ClaudeRequestOptions,
     type ClaudeResponse,
 } from './bedrock';
+
+// Free Tier & Cost Optimization
+export {
+    FREE_TIER,
+    MODELS_BY_COST,
+    estimateCost,
+    getCheapestModelFor,
+    FREE_TIER_TIPS,
+} from './free-tier';
