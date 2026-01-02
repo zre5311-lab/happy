@@ -37,3 +37,21 @@ export {
     type SignedUrlOptions,
     type CloudFrontDistribution,
 } from './cloudfront';
+
+// Bedrock Operations (Claude AI)
+export {
+    getBedrockClient,
+    getBedrockRuntimeClient,
+    CLAUDE_MODELS,
+    invokeClaudeConverse,
+    streamClaudeConverse,
+    invokeClaudeNative,
+    listFoundationModels,
+    getModelDetails,
+    chat,
+    streamChat,
+    type ClaudeModelId,
+    type Message,
+    type ClaudeRequestOptions,
+    type ClaudeResponse,
+} from './bedrock';
