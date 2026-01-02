@@ -23,6 +23,10 @@ let bedrockRuntimeClient: BedrockRuntimeClient | null = null;
 
 // Claude model IDs available on Bedrock
 export const CLAUDE_MODELS = {
+    // Claude 4 models (latest)
+    CLAUDE_OPUS_4_5: 'anthropic.claude-opus-4-5-20251101-v1:0',
+    CLAUDE_SONNET_4: 'anthropic.claude-sonnet-4-20250514-v1:0',
+
     // Claude 3.5 models
     CLAUDE_3_5_SONNET: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
     CLAUDE_3_5_HAIKU: 'anthropic.claude-3-5-haiku-20241022-v1:0',
@@ -102,7 +106,7 @@ export async function invokeClaudeConverse(options: ClaudeRequestOptions): Promi
     const client = getBedrockRuntimeClient();
 
     const {
-        model = CLAUDE_MODELS.CLAUDE_3_5_SONNET,
+        model = CLAUDE_MODELS.CLAUDE_OPUS_4_5,
         messages,
         systemPrompt,
         maxTokens = 4096,
@@ -148,7 +152,7 @@ export async function* streamClaudeConverse(
     const client = getBedrockRuntimeClient();
 
     const {
-        model = CLAUDE_MODELS.CLAUDE_3_5_SONNET,
+        model = CLAUDE_MODELS.CLAUDE_OPUS_4_5,
         messages,
         systemPrompt,
         maxTokens = 4096,
@@ -213,7 +217,7 @@ export async function invokeClaudeNative(options: ClaudeRequestOptions): Promise
     const client = getBedrockRuntimeClient();
 
     const {
-        model = CLAUDE_MODELS.CLAUDE_3_5_SONNET,
+        model = CLAUDE_MODELS.CLAUDE_OPUS_4_5,
         messages,
         systemPrompt,
         maxTokens = 4096,
